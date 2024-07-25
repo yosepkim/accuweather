@@ -25,14 +25,14 @@ export async function responseProvider(request) {
        
         const upperLeftTuple = upperLeft.split(',');
         const upperLeftCoord = {
-            lat: upperLeftTuple[0],
-            long: upperLeftTuple[1]
+            lat: parseFloat(upperLeftTuple[0]),
+            long: parseFloat(upperLeftTuple[1])
         }
         
         const lowerRightTuple = lowerRight.split(',');
         const lowerRightCoord = {
-            lat: lowerRightTuple[0],
-            long: lowerRightTuple[1]
+            lat: parseFloat(lowerRightTuple[0]),
+            long: parseFloat(lowerRightTuple[1])
         }
 
         const lightingDataUrl = 'https://awx-gsd-api-poc2.azurewebsites.net/api/lightning/glm/15min/';
@@ -45,8 +45,8 @@ export async function responseProvider(request) {
                 const lightingFeature = lightingDataPayload['features'][i];
                 const originalCoordinate = lightingFeature.geometry.coordinates;
                 const pointCoordinate = { 
-                    lat: originalCoordinate[0],
-                    long: originalCoordinate[1]
+                    lat: parseFloat(originalCoordinate[0]),
+                    long: parseFloat(originalCoordinate[1])
                 }
                 if (!isInBoundingBox(upperLeftCoord, lowerRightCoord, pointCoordinate)) {
                     lightingDataPayload['features'].splice(i, 1);
