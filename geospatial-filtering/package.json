@@ -1,0 +1,9 @@
+{
+  "name": "lighting-geospatial-filtering",
+  "description": "EdgeWorker function to filter Lighting data result by geospatial bound box",
+  "version": "1.0.0",
+  "type": "module",
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}

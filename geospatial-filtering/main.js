@@ -11,8 +11,8 @@ function buildResponse(httpCode, returnData) {
     );
 }
 
-function isInBoundingBox(upperLeft, lowerRight, point){
-    const isLongInRange = point.long <= upperLeft.long && point.long >= lowerRight.long;
+export function isInBoundingBox(upperLeft, lowerRight, point) {
+    const isLongInRange = point.lon <= upperLeft.lon && point.lon >= lowerRight.lon;
     const isLatiInRange = point.lat <= upperLeft.lat && point.lat >= lowerRight.lat;
     return (isLongInRange && isLatiInRange);
 }
@@ -26,16 +26,16 @@ export async function responseProvider(request) {
         const upperLeftTuple = upperLeft.split(',');
         const upperLeftCoord = {
             lat: parseFloat(upperLeftTuple[0]),
-            long: parseFloat(upperLeftTuple[1])
+            lon: parseFloat(upperLeftTuple[1])
         }
         
         const lowerRightTuple = lowerRight.split(',');
         const lowerRightCoord = {
             lat: parseFloat(lowerRightTuple[0]),
-            long: parseFloat(lowerRightTuple[1])
+            lon: parseFloat(lowerRightTuple[1])
         }
 
-        const lightingDataUrl = 'https://awx-gsd-api-poc2.azurewebsites.net/api/lightning/glm/15min/';
+        const lightingDataUrl = '/api/lightning/glm/15min/';
         const lightingDataResponse =  await httpRequest(lightingDataUrl);
     
         if (lightingDataResponse.ok) {
@@ -46,7 +46,7 @@ export async function responseProvider(request) {
                 const originalCoordinate = lightingFeature.geometry.coordinates;
                 const pointCoordinate = { 
                     lat: parseFloat(originalCoordinate[0]),
-                    long: parseFloat(originalCoordinate[1])
+                    lon: parseFloat(originalCoordinate[1])
                 }
                 if (!isInBoundingBox(upperLeftCoord, lowerRightCoord, pointCoordinate)) {
                     lightingDataPayload['features'].splice(i, 1);
@@ -55,7 +55,7 @@ export async function responseProvider(request) {
             return buildResponse(200, lightingDataPayload);
             
         } else {
-            return buildResponse(500, { "exception": 'lightingDataAPI call failed' });
+            return buildResponse(500, { "exception": `lightingDataAPI call failed: ${lightingDataResponse.status}` });
         }
     } catch(exception) {
         return buildResponse(500, { "exception": exception.toString() });
