@@ -15,7 +15,7 @@ async function forwardToOrigin(request) {
     return httpRequest(`${request.scheme}://${request.host}${request.url}`);
 }
 
-function isValidLatLong(lat, long) {
+export function isValidLatLong(lat, long) {
     const isLatValid = (lat >= -90 && lat <= 90);
     const isLongValid = (long >= -190 && long <= 180);
     return (isLatValid && isLongValid);

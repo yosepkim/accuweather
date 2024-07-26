@@ -95,9 +95,9 @@ export async function responseProvider(request) {
             if (currentConditionResponse.ok) {
                 let currentConditionJsonPayload = await currentConditionResponse.json();
                 const originalMobileLink = currentConditionJsonPayload['MobileLink'];
-                currentConditionJsonPayload['MobileLink'] = replaceLocationStemAndKey(originalMobileLink, /m\.accuweather\.com\/es\/(.+)\/currentweather\/(.+)\//, locationStem, xLocationKey);         
+                currentConditionJsonPayload['MobileLink'] = replaceLocationStemAndKey(originalMobileLink, /m\.accuweather\.com\/[a-zA-Z-]+\/(.+)\/currentweather\/(.+)\//, locationStem, xLocationKey);         
                 const originalLink = currentConditionJsonPayload['Link'];
-                currentConditionJsonPayload['Link'] = replaceLocationStemAndKey(originalLink, /www\.accuweather\.com\/es\/(.+)\/currentweather\/(.+)\//, locationStem, xLocationKey); 
+                currentConditionJsonPayload['Link'] = replaceLocationStemAndKey(originalLink, /www\.accuweather\.com\/[a-zA-Z-]+\/(.+)\/currentweather\/(.+)\//, locationStem, xLocationKey); 
 
                 currentCondtionDB.putJsonNoWait({ item: stationCode, value: currentConditionJsonPayload });
 
