@@ -47,9 +47,9 @@ export async function responseProvider(request) {
         const callback = params.get('callback');
         const locationKey = getLocationKey(request.url);
 
-        const stationCodeDB = new EdgeKV({namespace: "stationcode", group: "0"});
+        const weatherDB = new EdgeKV({namespace: "weather-data", group: "0"});
 
-        let stationCodeEntry = await stationCodeDB.getJson({ item: locationKey });
+        let stationCodeEntry = await weatherDB.getJson({ item: locationKey });
         let xLocationKey;
         let gmtOffset;
         let locationStem;
@@ -57,7 +57,7 @@ export async function responseProvider(request) {
 
         if (objectEmptyOrNull(stationCodeEntry)) {
             if (apiKey && locationKey) {
-                const stationCodeUrl = `https://api.accuweather.com/locations/v1/${locationKey}.json?apikey=${apiKey}`;
+                const stationCodeUrl = `/locations/v1/${locationKey}.json?apikey=${apiKey}`;
                 const stationCodeResponse =  await httpRequest(stationCodeUrl, { method: 'HEAD' });
     
                 if (stationCodeResponse.ok) {
@@ -66,7 +66,7 @@ export async function responseProvider(request) {
                     locationStem = stationCodeResponse.getHeader('X-Location-Stem');
                     stationCode = stationCodeResponse.getHeader('X-Station-Code');
 
-                    stationCodeDB.putJsonNoWait({ item: locationKey, value: {
+                    weatherDB.putJsonNoWait({ item: locationKey, value: {
                         xLocationKey, gmtOffset, locationStem, stationCode
                     } });
                 } else {
@@ -80,12 +80,12 @@ export async function responseProvider(request) {
             gmtOffset = stationCodeEntry.gmtOffset;
             locationStem = stationCodeEntry.locationStem;
             stationCode = stationCodeEntry.stationCode;
+
         }
-        
-        const currentCondtionDB = new EdgeKV({namespace: "currentcondition", group: "0"});
-        const currentCondtionEntry = await currentCondtionDB.getJson({ item: stationCode });
+
+        const currentCondtionEntry = await weatherDB.getJson({ item: stationCode });
         if (objectEmptyOrNull(currentCondtionEntry)) {
-            let currentConditionApiUrl = `https://api.accuweather.com/currentconditions/v1/stations/${stationCode}?apikey=${apikey}`
+            let currentConditionApiUrl = `/currentconditions/v1/stations/${stationCode}?apikey=${apikey}`
             currentConditionApiUrl = currentConditionApiUrl + `&locationOffset=${gmtOffset}`;
             currentConditionApiUrl = currentConditionApiUrl + `&details=${details}`;
             currentConditionApiUrl = currentConditionApiUrl + `&language=${language}`;
@@ -99,7 +99,7 @@ export async function responseProvider(request) {
                 const originalLink = currentConditionJsonPayload['Link'];
                 currentConditionJsonPayload['Link'] = replaceLocationStemAndKey(originalLink, /www\.accuweather\.com\/[a-zA-Z-]+\/(.+)\/currentweather\/(.+)\//, locationStem, xLocationKey); 
 
-                currentCondtionDB.putJsonNoWait({ item: stationCode, value: currentConditionJsonPayload });
+                weatherDB.putJsonNoWait({ item: stationCode, value: currentConditionJsonPayload });
 
                 return buildResponse(200, currentConditionJsonPayload);
             } else {
@@ -107,7 +107,7 @@ export async function responseProvider(request) {
             }
         } else {
             return buildResponse(200, currentCondtionEntry);
-        }      
+        }
     } catch(exception) {
         return buildResponse(500, { "exception": exception.toString() });
     }
