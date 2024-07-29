@@ -1,4 +1,4 @@
 {
-    "edgeworker-version":"0.2",
+    "edgeworker-version":"0.15",
     "description":"Filter lighting data by lat and lon"
 }

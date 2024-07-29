@@ -1,6 +1,7 @@
 import { httpRequest } from 'http-request';
 import { createResponse } from 'create-response';
 import URLSearchParams from 'url-search-params';
+import { TextDecoderStream } from 'text-encode-transform';
 import Service from './service.js';
 
 function buildResponse(httpCode, returnData) {
@@ -18,14 +19,14 @@ export async function responseProvider(request) {
         const upperLeft = params.get('upperLeft');
         const lowerRight = params.get('lowerRight');
 
-        const service = new Service(httpRequest);
+        const service = new Service(httpRequest, TextDecoderStream);
 
-        const result = service.process(upperLeft, lowerRight);
+        const result = await service.process(upperLeft, lowerRight);
         if (result.isSuccessfullyProcessed) 
-            return buildResponse(200, result.paylod);
+            return buildResponse(200, result.payload);
         else 
-            return buildResponse(500, result.payload);
+            return buildResponse(501, result.payload);
     } catch(exception) {
-        return buildResponse(500, { "exception": exception.toString() });
+        return buildResponse(502, { "exception": exception.toString() });
     }
 }

@@ -1,7 +1,8 @@
 export class Service {
 
-    constructor(httpRequest) {
+    constructor(httpRequest, TextDecoderStream) {
         this.httpRequest = httpRequest;
+        this.textDecoderStream = TextDecoderStream;
     }
 
     splitPairToCoordinate(pair) {
@@ -20,40 +21,60 @@ export class Service {
     }
 
     async process(upperLeftPair, lowerRightPair) {
-        const upperLeftCoord = this.splitPairToCoordinate(upperLeftPair);
-        const lowerRightCoord = this.splitPairToCoordinate(lowerRightPair);
+        try {
+            const upperLeftCoord = this.splitPairToCoordinate(upperLeftPair);
+            const lowerRightCoord = this.splitPairToCoordinate(lowerRightPair);
+    
+            const lightingDataUrl = '/api/lightning/glm/15min/';
+            const lightingDataResponse =  await this.httpRequest(lightingDataUrl);
+            if (lightingDataResponse.ok) {
+                let lightingDataSet = {
+                    type: "FeatureCollection",
+                    features: []
+                };
 
-        const lightingDataUrl = '/api/lightning/glm/15min/';
-        const lightingDataResponse =  await this.httpRequest(lightingDataUrl);
-        if (lightingDataResponse.ok) {
-            let lightingDataSet = {
-                type: "FeatureCollection",
-                features: []
-            };
-            const lightingDataPayload = await lightingDataResponse.json();
-            
-            for(let i = 0; i < lightingDataPayload['features'].length; i++) {
-                const lightingFeature = lightingDataPayload['features'][i];
-                const originalCoordinate = lightingFeature.geometry.coordinates;
+                const reader = lightingDataResponse.body.pipeThrough(new this.textDecoderStream()).getReader();
+                let fullDataSet = '';
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) {
+                        break;
+                    }
+                    fullDataSet += value;
+                }
 
-                const pointCoordinate = { 
-                    lat: parseFloat(originalCoordinate[0]),
-                    lon: parseFloat(originalCoordinate[1])
+                const lightingDataPayload = JSON.parse(fullDataSet);
+                
+                for(let i = 0; i < lightingDataPayload['features'].length; i++) {
+                    const lightingFeature = lightingDataPayload['features'][i];
+                    const originalCoordinate = lightingFeature.geometry.coordinates;
+    
+                    const pointCoordinate = { 
+                        lat: parseFloat(originalCoordinate[0]),
+                        lon: parseFloat(originalCoordinate[1])
+                    }
+                    if (this.isInBoundingBox(upperLeftCoord, lowerRightCoord, pointCoordinate)) {                   
+                        lightingDataSet.features.push(lightingFeature);
+                    }
+                };
+                return {
+                    isSuccessfullyProcessed: true,
+                    payload: lightingDataSet
                 }
-                if (this.isInBoundingBox(upperLeftCoord, lowerRightCoord, pointCoordinate)) {                   
-                    lightingDataSet.features.push(lightingFeature);
+                
+            } else {
+                return {
+                    isSuccessfullyProcessed: false,
+                    payload: { "exception": `lightingDataAPI call failed: ${lightingDataResponse.status}` }
                 }
-            };
-            return {
-                isSuccessfullyProcessed: true,
-                payload: lightingDataSet
             }
-            
-        } else {
+        } catch(exception) {
             return {
                 isSuccessfullyProcessed: false,
-                payload: { "exception": `lightingDataAPI call failed: ${lightingDataResponse.status}` }
+                payload: { "exception": `Service.process failed: ${exception.toString()}` }
             }
-        }
+        }   
     }
 }
+
+export default Service;
