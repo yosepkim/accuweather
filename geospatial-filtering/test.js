@@ -2,28 +2,47 @@ import { Service } from './service.js';
 
 let service;
 
+const mockLightingData = [
+    ' {"type": "FeatureCollection",',
+    ' "features": [{',
+    ' "geometry": {',
+    ' "coordinates": [-95.55, 68.99]',
+    ' }',
+    ' }, {',
+    ' "geometry": {',
+    ' "coordinates": [-95.55, 85.12]',
+    ' }',
+    ' }, {',
+    ' "geometry": {',
+    ' "coordinates": [-102.55, 85.12]',
+    ' }}]}'
+];
+
 beforeEach(() => {
     const mockHttpRequest = () => {
         return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({
-                'features': [{
-                        'geometry': {
-                            'coordinates': [-95.55, 68.99]
+            body: {
+                pipeThrough: (_) => {
+                    return {
+                        getReader: () => {
+                            let i = 0;
+                            return {
+                                read() {
+                                  return Promise.resolve(
+                                    i < mockLightingData.length
+                                      ? { value: mockLightingData[i++], done: false }
+                                      : { value: undefined, done: true }
+                                  );
+                                },
+                              };
                         }
-                    }, {
-                        'geometry': {
-                            'coordinates': [-95.55, 85.12]
-                        }
-                    }, {
-                        'geometry': {
-                            'coordinates': [-102.55, 85.12]
-                        }
-                    }
-                ]}
-            )}
-        )}
-	service = new Service(mockHttpRequest);
+                    };
+                }
+            }
+        })
+    }
+	service = new Service(mockHttpRequest, TextDecoderStream);
 });
 
 test('processes a request', async () => {

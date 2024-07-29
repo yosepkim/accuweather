@@ -27,6 +27,7 @@ export class Service {
     
             const lightingDataUrl = '/api/lightning/glm/15min/';
             const lightingDataResponse =  await this.httpRequest(lightingDataUrl);
+
             if (lightingDataResponse.ok) {
                 let lightingDataSet = {
                     type: "FeatureCollection",
@@ -34,17 +35,18 @@ export class Service {
                 };
 
                 const reader = lightingDataResponse.body.pipeThrough(new this.textDecoderStream()).getReader();
+
                 let fullDataSet = '';
                 while (true) {
+                    
                     const { done, value } = await reader.read();
                     if (done) {
                         break;
                     }
                     fullDataSet += value;
                 }
-
                 const lightingDataPayload = JSON.parse(fullDataSet);
-                
+
                 for(let i = 0; i < lightingDataPayload['features'].length; i++) {
                     const lightingFeature = lightingDataPayload['features'][i];
                     const originalCoordinate = lightingFeature.geometry.coordinates;
