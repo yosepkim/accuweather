@@ -26,13 +26,6 @@ async function forwardToOrigin(request) {
     return httpRequest(`${request.scheme}://${request.host}${request.url}`);
 }
 
-function replaceLocationStemAndKey(text, regexPattern, locationStem, xLocationKey) {
-    const mobileLinkMatches = regexPattern.exec(text);
-    return originalMobileLink
-        .replace(mobileLinkMatches[2], locationStem)
-        .replace(mobileLinkMatches[3], xLocationKey);  
-}
-
 export async function responseProvider(request) {
     try {
         const params = new URLSearchParams(request.query);
@@ -58,19 +51,19 @@ export async function responseProvider(request) {
         if (objectEmptyOrNull(stationCodeEntry)) {
             if (apiKey && locationKey) {
                 const stationCodeUrl = `/locations/v1/${locationKey}.json?apikey=${apiKey}`;
-                const stationCodeResponse =  await httpRequest(stationCodeUrl, { method: 'HEAD' });
+                const stationCodeResponse =  await httpRequest(stationCodeUrl);
     
                 if (stationCodeResponse.ok) {
-                    xLocationKey = stationCodeResponse.getHeader('X-Location-Key');
-                    gmtOffset = stationCodeResponse.getHeader('X-Gmt-Offset');
-                    locationStem = stationCodeResponse.getHeader('X-Location-Stem');
-                    stationCode = stationCodeResponse.getHeader('X-Station-Code');
+                    xLocationKey = stationCodeResponse.getHeader('X-Location-Key')[0];
+                    gmtOffset = stationCodeResponse.getHeader('X-Gmt-Offset')[0];
+                    locationStem = stationCodeResponse.getHeader('X-Location-Stem')[0];
+                    stationCode = stationCodeResponse.getHeader('X-Station-Code')[0];
 
                     weatherDB.putJsonNoWait({ item: locationKey, value: {
                         xLocationKey, gmtOffset, locationStem, stationCode
                     } });
                 } else {
-                    return buildResponse(500, { "exception": 'stationCodeAPI call failed' });
+                    return buildResponse(500, { "exception": `stationCodeAPI call failed for location ${locationKey} with HTTP status: ${stationCodeResponse.status}` });
                 }
             } else {
                 return buildResponse(500, { "exception": 'Either APIkey or locationKey is missing.' });
@@ -80,30 +73,38 @@ export async function responseProvider(request) {
             gmtOffset = stationCodeEntry.gmtOffset;
             locationStem = stationCodeEntry.locationStem;
             stationCode = stationCodeEntry.stationCode;
-
         }
+        
 
-        const currentCondtionEntry = await weatherDB.getJson({ item: stationCode });
+        const cacheKey = `${stationCode}-${gmtOffset}-${details}-${language}`;
+        const currentCondtionEntry = await weatherDB.getJson({ item: cacheKey });
         if (objectEmptyOrNull(currentCondtionEntry)) {
-            let currentConditionApiUrl = `/currentconditions/v1/stations/${stationCode}?apikey=${apikey}`
-            currentConditionApiUrl = currentConditionApiUrl + `&locationOffset=${gmtOffset}`;
-            currentConditionApiUrl = currentConditionApiUrl + `&details=${details}`;
-            currentConditionApiUrl = currentConditionApiUrl + `&language=${language}`;
-            currentConditionApiUrl = currentConditionApiUrl + `&callback=${callback}`;
+            let currentConditionApiUrl = `/currentconditions/v1/stations/${stationCode}?apikey=${apiKey}`;
+            if (!objectEmptyOrNull(gmtOffset))
+                currentConditionApiUrl = currentConditionApiUrl + `&locationOffset=${gmtOffset}`;
+            if (!objectEmptyOrNull(details))
+                currentConditionApiUrl = currentConditionApiUrl + `&details=${details}`;
+            if (!objectEmptyOrNull(language))
+                currentConditionApiUrl = currentConditionApiUrl + `&language=${language}`;
+            if (!objectEmptyOrNull(callback))
+                currentConditionApiUrl = currentConditionApiUrl + `&callback=${callback}`;
             
             const currentConditionResponse =  await httpRequest(currentConditionApiUrl);
             if (currentConditionResponse.ok) {
-                let currentConditionJsonPayload = await currentConditionResponse.json();
-                const originalMobileLink = currentConditionJsonPayload['MobileLink'];
-                currentConditionJsonPayload['MobileLink'] = replaceLocationStemAndKey(originalMobileLink, /m\.accuweather\.com\/[a-zA-Z-]+\/(.+)\/currentweather\/(.+)\//, locationStem, xLocationKey);         
-                const originalLink = currentConditionJsonPayload['Link'];
-                currentConditionJsonPayload['Link'] = replaceLocationStemAndKey(originalLink, /www\.accuweather\.com\/[a-zA-Z-]+\/(.+)\/currentweather\/(.+)\//, locationStem, xLocationKey); 
+                const currentConditionJsonPayload = await currentConditionResponse.json();
+                let currentCondition = currentConditionJsonPayload[0];
+                const originalMobileLink = currentCondition['MobileLink'];
+                currentCondition['MobileLink'] = originalMobileLink.replace('{location}', locationStem).replace('{locationkey}', xLocationKey);         
+                const originalLink = currentCondition['Link'];
+                currentCondition['Link'] = originalLink.replace('{location}', locationStem).replace('{locationkey}', xLocationKey);; 
 
-                weatherDB.putJsonNoWait({ item: stationCode, value: currentConditionJsonPayload });
+                const returnPayload = [ currentCondition ];
 
-                return buildResponse(200, currentConditionJsonPayload);
+                weatherDB.putJsonNoWait({ item: cacheKey, value: returnPayload });
+
+                return buildResponse(200, returnPayload);
             } else {
-                return buildResponse(500, { "exception": 'currentConditionAPI call failed' });
+                return buildResponse(500, { "exception": `currentConditionAPI call failed for station code ${stationCode} with HTTP status: ${currentConditionResponse.status}` });
             }
         } else {
             return buildResponse(200, currentCondtionEntry);
