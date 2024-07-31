@@ -1,0 +1,22 @@
+{
+  "name": "lighting-geospatial-filtering",
+  "description": "EdgeWorker function to filter Lighting data result by geospatial bound box",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "rollup -c && cd dist/work && tar -czvf ../tarball.tgz *"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^26.0.1",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "jest": "^29.7.0",
+    "rollup-plugin-copy-assets": "^2.0.3",
+    "rollup-plugin-polyfill-node": "^0.13.0"
+  },
+  "dependencies": {
+    "@turf/bbox-polygon": "^7.0.0",
+    "@turf/boolean-point-in-polygon": "^7.0.0",
+    "@turf/helpers": "^7.0.0",
+    "util": "^0.12.5"
+  }
+}
